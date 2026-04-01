@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -15,10 +15,18 @@ export default function Home() {
   const [plan, setPlan] = useState<any>(null)
   const [planId, setPlanId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   const supabase = createClient()
+
+  // Check session on load
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserEmail(user.email ?? null)
+    })
+  }, [])
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
