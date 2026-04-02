@@ -126,19 +126,19 @@ export default function Home() {
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Hero */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-2">
+        <h1 className="text-3xl font-bold tracking-tight mb-2 text-heading">
           Know exactly what you need before you sit down to paint.
         </h1>
-        <p className="text-stone-500">
+        <p className="text-muted">
           Describe your miniature, get a complete session plan with paints, steps, and basing.
         </p>
       </div>
 
       {/* Input form */}
-      <div className="bg-white rounded-lg border border-stone-200 p-6 mb-6">
+      <div className="bg-card rounded-lg border border-card-border p-6 mb-6">
         {/* Description */}
         <div className="mb-4">
-          <label htmlFor="description" className="block text-sm font-medium text-stone-700 mb-1">
+          <label htmlFor="description" className="block text-sm font-medium text-foreground mb-1">
             What are you painting?
           </label>
           <textarea
@@ -146,18 +146,18 @@ export default function Home() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder='e.g., "Blood Angels Intercessor, grimdark style" or "Stormcast Eternal with a desert base"'
-            className="w-full rounded-md border border-stone-300 px-3 py-2 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent resize-none"
+            className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent resize-none"
             rows={3}
             maxLength={1000}
           />
-          <div className="text-xs text-stone-400 mt-1 text-right">
+          <div className="text-xs text-muted mt-1 text-right">
             {description.length}/1000
           </div>
         </div>
 
         {/* Image upload */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-stone-700 mb-1">
+          <label className="block text-sm font-medium text-foreground mb-1">
             Reference image (optional)
           </label>
           {imagePreview ? (
@@ -165,11 +165,11 @@ export default function Home() {
               <img
                 src={imagePreview}
                 alt="Reference"
-                className="h-32 w-32 object-cover rounded-md border border-stone-200"
+                className="h-32 w-32 object-cover rounded-md border border-card-border"
               />
               <button
                 onClick={removeImage}
-                className="absolute -top-2 -right-2 bg-stone-900 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-stone-700"
+                className="absolute -top-2 -right-2 bg-deep-red text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-700"
               >
                 x
               </button>
@@ -177,11 +177,11 @@ export default function Home() {
           ) : (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-stone-300 rounded-md py-6 text-center text-sm text-stone-500 hover:border-stone-400 hover:text-stone-600 transition-colors"
+              className="w-full border-2 border-dashed border-card-border rounded-md py-6 text-center text-sm text-muted hover:border-amber hover:text-amber transition-colors"
             >
               Drop a reference image here or click to upload
               <br />
-              <span className="text-xs text-stone-400">JPEG, PNG, WebP, or GIF under 10MB</span>
+              <span className="text-xs opacity-60">JPEG, PNG, WebP, or GIF under 10MB</span>
             </button>
           )}
           <input
@@ -195,14 +195,14 @@ export default function Home() {
 
         {/* Basing toggle */}
         <div className="mb-6 flex items-center gap-2">
-          <label className="text-sm font-medium text-stone-700">Include basing?</label>
+          <label className="text-sm font-medium text-foreground">Include basing?</label>
           <div className="flex gap-1">
             <button
               onClick={() => setIncludeBasing(true)}
               className={`px-3 py-1 text-sm rounded-full border transition-colors ${
                 includeBasing
-                  ? 'bg-stone-900 text-white border-stone-900'
-                  : 'border-stone-300 text-stone-500 hover:border-stone-400'
+                  ? 'bg-amber text-background border-amber font-semibold'
+                  : 'border-card-border text-muted hover:border-amber hover:text-amber'
               }`}
             >
               Yes
@@ -211,8 +211,8 @@ export default function Home() {
               onClick={() => setIncludeBasing(false)}
               className={`px-3 py-1 text-sm rounded-full border transition-colors ${
                 !includeBasing
-                  ? 'bg-stone-900 text-white border-stone-900'
-                  : 'border-stone-300 text-stone-500 hover:border-stone-400'
+                  ? 'bg-amber text-background border-amber font-semibold'
+                  : 'border-card-border text-muted hover:border-amber hover:text-amber'
               }`}
             >
               No
@@ -222,7 +222,7 @@ export default function Home() {
 
         {/* Error */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+          <div className="mb-4 p-3 bg-deep-red/20 border border-deep-red rounded-md text-sm text-red-300">
             {error}
           </div>
         )}
@@ -231,7 +231,7 @@ export default function Home() {
         <button
           onClick={handleGenerate}
           disabled={isGenerating || !description.trim()}
-          className="w-full py-3 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-3.5 bg-gradient-to-b from-amber to-amber-dim text-background font-bold rounded-md hover:from-amber-hover hover:to-amber disabled:opacity-40 disabled:cursor-not-allowed transition-all text-base tracking-wide shadow-lg shadow-amber/20"
         >
           {isGenerating ? 'Generating...' : 'Generate Session Plan'}
         </button>
@@ -239,10 +239,10 @@ export default function Home() {
 
       {/* Loading indicator */}
       {isGenerating && !plan && (
-        <div className="bg-white rounded-lg border border-stone-200 p-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-stone-900 rounded-full animate-pulse" />
-            <span className="text-sm text-stone-500">Generating your painting plan... this takes 10-20 seconds</span>
+        <div className="bg-card rounded-lg border border-card-border p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 bg-amber rounded-full animate-pulse" />
+            <span className="text-sm text-muted">Generating your painting plan... this takes 10-20 seconds</span>
           </div>
         </div>
       )}
@@ -282,12 +282,12 @@ function PlanDisplay({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-stone-200 p-6">
+    <div className="bg-card rounded-lg border border-card-border p-6">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-xl font-bold">{plan.title}</h2>
-        <div className="flex items-center gap-3 mt-1 text-sm text-stone-500">
-          <span className="inline-block px-2 py-0.5 bg-stone-100 rounded text-xs">
+        <h2 className="text-xl font-bold text-heading">{plan.title}</h2>
+        <div className="flex items-center gap-3 mt-2 text-sm text-muted">
+          <span className="inline-block px-2 py-0.5 bg-amber/15 text-amber rounded text-xs font-medium">
             {plan.style}
           </span>
           <span>~{plan.estimated_time_min} min</span>
@@ -298,21 +298,21 @@ function PlanDisplay({
 
       {/* Paint checklist */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-stone-700 mb-3">Paint Checklist</h3>
+        <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">Paint Checklist</h3>
         <div className="space-y-2">
           {plan.paints?.map((paint: any, i: number) => (
             <div key={i} className="flex items-center gap-3 text-sm">
               <div
-                className="w-5 h-5 rounded border border-stone-200 flex-shrink-0"
+                className="w-8 h-8 rounded-md border-2 border-card-border flex-shrink-0 shadow-sm"
                 style={{ backgroundColor: paint.hex_color || '#ccc' }}
               />
               <div className="flex-1">
-                <span className="font-medium">{paint.name}</span>
-                <span className="text-stone-400 ml-1">
+                <span className="font-medium text-heading">{paint.name}</span>
+                <span className="text-muted ml-2 text-xs">
                   {paint.brand} {paint.paint_type}
                 </span>
               </div>
-              <span className="text-xs text-stone-400">{paint.purpose}</span>
+              <span className="text-xs text-muted">{paint.purpose}</span>
             </div>
           ))}
         </div>
@@ -320,17 +320,17 @@ function PlanDisplay({
 
       {/* Steps */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-stone-700 mb-3">Step-by-Step Plan</h3>
+        <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">Step-by-Step Plan</h3>
         <div className="space-y-3">
           {plan.steps?.map((step: any) => (
             <div key={step.order} className="flex gap-3">
-              <div className="w-6 h-6 bg-stone-900 text-white rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0">
+              <div className="w-7 h-7 bg-amber text-background rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm">
                 {step.order}
               </div>
-              <div className="text-sm">
-                <p>{step.instruction}</p>
+              <div className="text-sm pt-0.5">
+                <p className="text-foreground">{step.instruction}</p>
                 {step.paint_name && (
-                  <p className="text-stone-400 text-xs mt-0.5">
+                  <p className="text-muted text-xs mt-0.5">
                     {step.paint_name} — {step.technique}
                   </p>
                 )}
@@ -343,16 +343,16 @@ function PlanDisplay({
       {/* Basing */}
       {plan.basing?.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-stone-700 mb-3">Basing Plan</h3>
+          <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">Basing Plan</h3>
           <div className="space-y-3">
             {plan.basing.map((step: any) => (
               <div key={step.order} className="flex gap-3">
-                <div className="w-6 h-6 bg-stone-600 text-white rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                <div className="w-7 h-7 bg-deep-red text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm">
                   B{step.order}
                 </div>
-                <div className="text-sm">
-                  <p>{step.instruction}</p>
-                  <p className="text-stone-400 text-xs mt-0.5">
+                <div className="text-sm pt-0.5">
+                  <p className="text-foreground">{step.instruction}</p>
+                  <p className="text-muted text-xs mt-0.5">
                     Materials: {step.materials?.join(', ')}
                   </p>
                 </div>
@@ -364,14 +364,14 @@ function PlanDisplay({
 
       {/* Save error */}
       {saveError && (
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-700">
+        <div className="mb-4 p-3 bg-amber/10 border border-amber-dim rounded-md text-sm text-amber">
           {saveError}
         </div>
       )}
 
       {/* Feedback + AI note */}
-      <div className="border-t border-stone-100 pt-4 flex items-center justify-between">
-        <p className="text-xs text-stone-400">
+      <div className="border-t border-card-border pt-4 flex items-center justify-between">
+        <p className="text-xs text-muted">
           AI-generated plan — verify paint names against your collection
         </p>
         <div className="flex gap-2">
@@ -379,8 +379,8 @@ function PlanDisplay({
             onClick={() => submitFeedback('positive')}
             className={`px-3 py-1 text-sm rounded border transition-colors ${
               feedback === 'positive'
-                ? 'bg-green-50 border-green-300 text-green-700'
-                : 'border-stone-200 text-stone-500 hover:border-stone-300'
+                ? 'bg-green-900/30 border-green-600 text-green-400'
+                : 'border-card-border text-muted hover:border-green-700 hover:text-green-400'
             }`}
           >
             👍
@@ -389,8 +389,8 @@ function PlanDisplay({
             onClick={() => submitFeedback('negative')}
             className={`px-3 py-1 text-sm rounded border transition-colors ${
               feedback === 'negative'
-                ? 'bg-red-50 border-red-300 text-red-700'
-                : 'border-stone-200 text-stone-500 hover:border-stone-300'
+                ? 'bg-red-900/30 border-red-600 text-red-400'
+                : 'border-card-border text-muted hover:border-red-700 hover:text-red-400'
             }`}
           >
             👎

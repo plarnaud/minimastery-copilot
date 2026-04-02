@@ -32,24 +32,29 @@ export function Header() {
   }
 
   return (
-    <header className="border-b border-stone-200 bg-white">
+    <header className="border-b border-card-border bg-card relative z-10">
       <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-        <a href="/" className="font-bold text-lg tracking-tight">
-          MiniMastery
+        <a href="/" className="flex items-center gap-2 group">
+          <span className="font-bold text-lg tracking-tight text-amber group-hover:text-amber-hover transition-colors">
+            MiniMastery
+          </span>
+          <span className="text-xs text-muted hidden sm:inline tracking-wide">
+            Session Prep
+          </span>
         </a>
         <nav className="flex items-center gap-4 text-sm">
           {email ? (
             <>
               <a
                 href="/collection"
-                className="text-stone-500 hover:text-stone-900 transition-colors"
+                className="text-muted hover:text-amber transition-colors"
               >
                 My Collection
               </a>
-              <span className="text-stone-400 text-xs hidden sm:inline">{email}</span>
+              <span className="text-muted text-xs hidden sm:inline opacity-60">{email}</span>
               <button
                 onClick={handleSignOut}
-                className="text-stone-400 hover:text-stone-700 transition-colors"
+                className="text-muted hover:text-foreground transition-colors"
               >
                 Sign out
               </button>
@@ -57,7 +62,7 @@ export function Header() {
           ) : (
             <a
               href="/auth/login"
-              className="text-stone-500 hover:text-stone-900 transition-colors"
+              className="text-muted hover:text-amber transition-colors"
             >
               Sign in
             </a>

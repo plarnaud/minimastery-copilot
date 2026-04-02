@@ -59,7 +59,7 @@ export default function LoginPage() {
 
   if (checkingSession) {
     return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center text-stone-400 text-sm">
+      <div className="max-w-md mx-auto px-4 py-16 text-center text-muted text-sm">
         Loading...
       </div>
     )
@@ -68,19 +68,19 @@ export default function LoginPage() {
   if (sent) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <div className="bg-white rounded-lg border border-stone-200 p-8">
+        <div className="bg-card rounded-lg border border-card-border p-8">
           <div className="text-4xl mb-4">📧</div>
-          <h1 className="text-xl font-bold mb-2">Check your email</h1>
-          <p className="text-stone-500 text-sm mb-4">
-            We sent a magic link to <strong>{email}</strong>.
+          <h1 className="text-xl font-bold mb-2 text-heading">Check your email</h1>
+          <p className="text-muted text-sm mb-4">
+            We sent a magic link to <strong className="text-foreground">{email}</strong>.
             <br />Click the link to sign in — it may take a minute to arrive.
           </p>
-          <p className="text-xs text-stone-400 mb-6">
+          <p className="text-xs text-muted opacity-60 mb-6">
             Check your spam folder if you don't see it.
           </p>
           <button
             onClick={() => { setSent(false); setEmail('') }}
-            className="text-sm text-stone-500 hover:text-stone-900 underline underline-offset-2"
+            className="text-sm text-amber hover:text-amber-hover underline underline-offset-2 transition-colors"
           >
             Use a different email
           </button>
@@ -91,19 +91,19 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto px-4 py-16">
-      <div className="bg-white rounded-lg border border-stone-200 p-8">
+      <div className="bg-card rounded-lg border border-card-border p-8">
         {/* Branding */}
         <div className="text-center mb-6">
           <div className="text-3xl mb-2">🎨</div>
-          <h1 className="text-xl font-bold mb-1">Sign in to MiniMastery</h1>
-          <p className="text-stone-500 text-sm">
+          <h1 className="text-xl font-bold mb-1 text-heading">Sign in to MiniMastery</h1>
+          <p className="text-muted text-sm">
             Get AI-powered painting plans for your miniatures.
             <br />No password needed — we'll email you a sign-in link.
           </p>
         </div>
 
         <form onSubmit={handleLogin}>
-          <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-1">
+          <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
             Email address
           </label>
           <input
@@ -114,11 +114,11 @@ export default function LoginPage() {
             placeholder="your@email.com"
             required
             autoFocus
-            className="w-full rounded-md border border-stone-300 px-3 py-2.5 text-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-900 focus:border-transparent mb-3"
+            className="w-full rounded-md border border-card-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent mb-3"
           />
 
           {error && (
-            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+            <div className="mb-3 p-2 bg-deep-red/20 border border-deep-red rounded text-sm text-red-300">
               {error}
             </div>
           )}
@@ -126,14 +126,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !email.trim()}
-            className="w-full py-2.5 bg-stone-900 text-white font-medium rounded-md hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-2.5 bg-gradient-to-b from-amber to-amber-dim text-background font-bold rounded-md hover:from-amber-hover hover:to-amber disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber/20"
           >
             {loading ? 'Sending link...' : 'Continue with Email'}
           </button>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-stone-100 text-center">
-          <p className="text-xs text-stone-400">
+        <div className="mt-6 pt-4 border-t border-card-border text-center">
+          <p className="text-xs text-muted">
             Free account — 5 painting plans per month.
             <br />No credit card required.
           </p>
