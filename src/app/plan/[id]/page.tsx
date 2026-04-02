@@ -15,6 +15,7 @@ interface SavedPlan {
 
 export default function PlanDetailPage() {
   const [plan, setPlan] = useState<SavedPlan | null>(null)
+  const [ownedPaintNames, setOwnedPaintNames] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
@@ -30,20 +31,35 @@ export default function PlanDetailPage() {
         return
       }
 
-      const { data, error: fetchError } = await supabase
-        .from('session_plans')
-        .select('id, input_text, plan_json, feedback, created_at')
-        .eq('id', planId)
-        .eq('user_id', user.id)
-        .single()
+      // Load plan and inventory in parallel
+      const [planResult, inventoryResult] = await Promise.all([
+        supabase
+          .from('session_plans')
+          .select('id, input_text, plan_json, feedback, created_at')
+          .eq('id', planId)
+          .eq('user_id', user.id)
+          .single(),
+        supabase
+          .from('user_inventory')
+          .select('paint_catalog(name)')
+          .eq('user_id', user.id)
+          .eq('status', 'owned'),
+      ])
 
-      if (fetchError || !data) {
+      if (planResult.error || !planResult.data) {
         setError('Plan not found')
         setLoading(false)
         return
       }
 
-      setPlan(data)
+      setPlan(planResult.data)
+
+      if (inventoryResult.data) {
+        setOwnedPaintNames(
+          inventoryResult.data.map((i: any) => i.paint_catalog?.name).filter(Boolean)
+        )
+      }
+
       setLoading(false)
     }
 
@@ -103,7 +119,11 @@ export default function PlanDetailPage() {
         </div>
       )}
 
-      <PlanDisplay plan={plan.plan_json} planId={plan.id} />
+      <PlanDisplay
+        plan={plan.plan_json}
+        planId={plan.id}
+        ownedPaintNames={ownedPaintNames}
+      />
     </div>
   )
 }

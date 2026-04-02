@@ -7,13 +7,24 @@ export function PlanDisplay({
   plan,
   planId,
   saveError,
+  ownedPaintNames = [],
 }: {
   plan: any
   planId: string | null
   saveError?: string | null
+  ownedPaintNames?: string[]
 }) {
   const [feedback, setFeedback] = useState<'positive' | 'negative' | null>(null)
   const supabase = createClient()
+
+  // Normalize owned paint names for matching
+  const ownedSet = new Set(ownedPaintNames.map(n => n.toLowerCase().trim()))
+  const hasInventory = ownedSet.size > 0
+
+  function paintStatus(paintName: string): 'have' | 'missing' | null {
+    if (!hasInventory) return null
+    return ownedSet.has(paintName.toLowerCase().trim()) ? 'have' : 'missing'
+  }
 
   async function submitFeedback(type: 'positive' | 'negative') {
     setFeedback(type)
@@ -60,9 +71,23 @@ export function PlanDisplay({
 
       {/* ── PAINTS BY TYPE ── */}
       <div className="bg-card rounded-lg border border-card-border p-5">
-        <h3 className="text-sm font-semibold text-amber mb-4 uppercase tracking-wider">
+        <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">
           Paints You'll Need
         </h3>
+        {hasInventory && (() => {
+          const total = plan.paints?.length || 0
+          const owned = (plan.paints || []).filter((p: any) => paintStatus(p.name) === 'have').length
+          const missing = total - owned
+          return (
+            <div className="flex items-center gap-3 mb-4 px-3 py-2.5 bg-background rounded-md border border-card-border text-xs">
+              <span className="text-green-400 font-semibold">{owned} owned</span>
+              <span className="text-card-border">|</span>
+              <span className="text-red-400 font-semibold">{missing} needed</span>
+              <span className="text-card-border">|</span>
+              <span className="text-muted">{total} total</span>
+            </div>
+          )
+        })()}
         <div className="space-y-4">
           {sortedPaintTypes.map(type => (
             <div key={type}>
@@ -70,21 +95,36 @@ export function PlanDisplay({
                 {type} paints ({paintsByType[type].length})
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {paintsByType[type].map((paint: any, i: number) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-md bg-background/50 border border-transparent hover:border-card-border transition-colors"
-                  >
+                {paintsByType[type].map((paint: any, i: number) => {
+                  const status = paintStatus(paint.name)
+                  return (
                     <div
-                      className="w-8 h-8 rounded-md border-2 border-card-border flex-shrink-0 shadow-sm"
-                      style={{ backgroundColor: paint.hex_color || '#555' }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-heading truncate">{paint.name}</p>
-                      <p className="text-[11px] text-muted truncate">{paint.purpose}</p>
+                      key={i}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md border transition-colors ${
+                        status === 'have'
+                          ? 'bg-green-900/10 border-green-800/30'
+                          : status === 'missing'
+                          ? 'bg-red-900/10 border-red-900/30'
+                          : 'bg-background/50 border-transparent hover:border-card-border'
+                      }`}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-md border-2 border-card-border flex-shrink-0 shadow-sm"
+                        style={{ backgroundColor: paint.hex_color || '#555' }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-heading truncate">{paint.name}</p>
+                        <p className="text-[11px] text-muted truncate">{paint.purpose}</p>
+                      </div>
+                      {status === 'have' && (
+                        <span className="text-[10px] font-semibold text-green-400 flex-shrink-0">OWN</span>
+                      )}
+                      {status === 'missing' && (
+                        <span className="text-[10px] font-semibold text-red-400 flex-shrink-0">NEED</span>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ))}

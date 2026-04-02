@@ -17,15 +17,29 @@ export default function Home() {
   const [planId, setPlanId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [ownedPaintNames, setOwnedPaintNames] = useState<string[]>([])
+  const [loadingStep, setLoadingStep] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   const supabase = createClient()
 
-  // Check session on load
+  // Check session + load owned paints on mount
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserEmail(user.email ?? null)
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        setUserEmail(user.email ?? null)
+        const { data: inventory } = await supabase
+          .from('user_inventory')
+          .select('paint_catalog(name)')
+          .eq('user_id', user.id)
+          .eq('status', 'owned')
+        if (inventory) {
+          setOwnedPaintNames(
+            inventory.map((i: any) => i.paint_catalog?.name).filter(Boolean)
+          )
+        }
+      }
     })
   }, [])
 
@@ -80,6 +94,7 @@ export default function Home() {
     setPlan(null)
     setPlanId(null)
     setSaveError(null)
+    setLoadingStep(0)
 
     try {
       const res = await fetch('/api/generate-plan', {
@@ -238,14 +253,9 @@ export default function Home() {
         </button>
       </div>
 
-      {/* Loading indicator */}
+      {/* Loading indicator — themed steps */}
       {isGenerating && !plan && (
-        <div className="bg-card rounded-lg border border-card-border p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 bg-amber rounded-full animate-pulse" />
-            <span className="text-sm text-muted">Generating your painting plan... this takes 10-20 seconds</span>
-          </div>
-        </div>
+        <LoadingSteps step={loadingStep} onAdvance={() => setLoadingStep(s => s + 1)} />
       )}
 
       {/* Plan display */}
@@ -254,9 +264,58 @@ export default function Home() {
           plan={plan}
           planId={planId}
           saveError={saveError}
+          ownedPaintNames={ownedPaintNames}
         />
       )}
     </div>
   )
 }
 
+const LOADING_MESSAGES = [
+  { text: 'Sorting through the paint rack...', icon: '🎨' },
+  { text: 'Searching for references...', icon: '🔍' },
+  { text: 'Checking color theory...', icon: '🌈' },
+  { text: 'Thinning the paints (two thin coats!)...', icon: '💧' },
+  { text: 'Looking up lore-accurate schemes...', icon: '📖' },
+  { text: 'Planning the basing materials...', icon: '🪨' },
+  { text: 'Laying out the steps...', icon: '📋' },
+  { text: 'Almost done, final highlights...', icon: '✨' },
+]
+
+function LoadingSteps({ step, onAdvance }: { step: number; onAdvance: () => void }) {
+  useEffect(() => {
+    const interval = setInterval(onAdvance, 2200)
+    return () => clearInterval(interval)
+  }, [onAdvance])
+
+  const visibleMessages = LOADING_MESSAGES.slice(0, Math.min(step + 1, LOADING_MESSAGES.length))
+
+  return (
+    <div className="bg-card rounded-lg border border-card-border p-5">
+      <div className="space-y-2.5">
+        {visibleMessages.map((msg, i) => {
+          const isLatest = i === visibleMessages.length - 1
+          return (
+            <div
+              key={i}
+              className={`flex items-center gap-3 transition-opacity duration-500 ${
+                isLatest ? 'opacity-100' : 'opacity-40'
+              }`}
+            >
+              <span className="text-base w-6 text-center flex-shrink-0">{msg.icon}</span>
+              <span className={`text-sm ${isLatest ? 'text-foreground' : 'text-muted'}`}>
+                {msg.text}
+              </span>
+              {isLatest && (
+                <div className="w-1.5 h-1.5 bg-amber rounded-full animate-pulse ml-1" />
+              )}
+              {!isLatest && (
+                <span className="text-green-500 text-xs ml-1">done</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
