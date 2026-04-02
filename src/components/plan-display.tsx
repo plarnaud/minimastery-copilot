@@ -1,7 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+
+function amazonSearchUrl(paintName: string, brand: string): string {
+  const query = encodeURIComponent(`${brand} ${paintName} miniature paint`)
+  return `https://www.amazon.com/s?k=${query}&tag=minimastery-20`
+}
 
 export function PlanDisplay({
   plan,
@@ -15,6 +20,8 @@ export function PlanDisplay({
   ownedPaintNames?: string[]
 }) {
   const [feedback, setFeedback] = useState<'positive' | 'negative' | null>(null)
+  const [wishlisted, setWishlisted] = useState<Set<string>>(new Set())
+  const [wishlistLoading, setWishlistLoading] = useState<string | null>(null)
   const supabase = createClient()
 
   // Normalize owned paint names for matching
@@ -33,6 +40,30 @@ export function PlanDisplay({
     }
   }
 
+  const addToWishlist = useCallback(async (paintName: string, brand: string) => {
+    setWishlistLoading(paintName)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Find paint in catalog by name (case-insensitive)
+      const { data: matches } = await supabase
+        .from('paint_catalog')
+        .select('id')
+        .ilike('name', paintName)
+        .limit(1)
+
+      if (matches && matches.length > 0) {
+        await supabase
+          .from('user_inventory')
+          .upsert({ user_id: user.id, paint_id: matches[0].id, status: 'wishlist' }, { onConflict: 'user_id,paint_id' })
+        setWishlisted(prev => new Set(prev).add(paintName.toLowerCase().trim()))
+      }
+    } finally {
+      setWishlistLoading(null)
+    }
+  }, [supabase])
+
   // Group paints by type
   const paintsByType: Record<string, any[]> = {}
   for (const paint of plan.paints || []) {
@@ -45,7 +76,13 @@ export function PlanDisplay({
     (typeOrder.indexOf(a) === -1 ? 99 : typeOrder.indexOf(a)) - (typeOrder.indexOf(b) === -1 ? 99 : typeOrder.indexOf(b))
   )
 
-  // Group steps into phases based on technique patterns
+  // Stats
+  const totalPaints = plan.paints?.length || 0
+  const ownedCount = hasInventory ? (plan.paints || []).filter((p: any) => paintStatus(p.name) === 'have').length : 0
+  const missingCount = totalPaints - ownedCount
+  const missingPaints = hasInventory ? (plan.paints || []).filter((p: any) => paintStatus(p.name) === 'missing') : []
+
+  // Group steps into phases
   const phases = groupStepsIntoPhases(plan.steps || [])
 
   return (
@@ -61,7 +98,7 @@ export function PlanDisplay({
             ~{plan.estimated_time_min} min
           </span>
           <span className="text-xs text-muted px-2 py-1 bg-background rounded-md">
-            {plan.paints?.length} paints
+            {totalPaints} paints
           </span>
           <span className="text-xs text-muted px-2 py-1 bg-background rounded-md">
             {plan.steps?.length} steps
@@ -74,20 +111,22 @@ export function PlanDisplay({
         <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">
           Paints You'll Need
         </h3>
-        {hasInventory && (() => {
-          const total = plan.paints?.length || 0
-          const owned = (plan.paints || []).filter((p: any) => paintStatus(p.name) === 'have').length
-          const missing = total - owned
-          return (
-            <div className="flex items-center gap-3 mb-4 px-3 py-2.5 bg-background rounded-md border border-card-border text-xs">
-              <span className="text-green-400 font-semibold">{owned} owned</span>
-              <span className="text-card-border">|</span>
-              <span className="text-red-400 font-semibold">{missing} needed</span>
-              <span className="text-card-border">|</span>
-              <span className="text-muted">{total} total</span>
-            </div>
-          )
-        })()}
+
+        {/* Inventory summary */}
+        {hasInventory && (
+          <div className="flex items-center gap-3 mb-4 px-3 py-2.5 bg-background rounded-md border border-card-border text-xs">
+            <span className="text-green-400 font-semibold">{ownedCount} owned</span>
+            <span className="text-card-border">|</span>
+            <span className="text-red-400 font-semibold">{missingCount} needed</span>
+            <span className="text-card-border">|</span>
+            <span className="text-muted">{totalPaints} total</span>
+            {missingCount === 0 && (
+              <span className="ml-auto text-green-400 font-semibold">Ready to paint!</span>
+            )}
+          </div>
+        )}
+
+        {/* Paint grid by type */}
         <div className="space-y-4">
           {sortedPaintTypes.map(type => (
             <div key={type}>
@@ -97,6 +136,8 @@ export function PlanDisplay({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {paintsByType[type].map((paint: any, i: number) => {
                   const status = paintStatus(paint.name)
+                  const isWishlisted = wishlisted.has(paint.name.toLowerCase().trim())
+                  const isLoading = wishlistLoading === paint.name
                   return (
                     <div
                       key={i}
@@ -120,7 +161,38 @@ export function PlanDisplay({
                         <span className="text-[10px] font-semibold text-green-400 flex-shrink-0">OWN</span>
                       )}
                       {status === 'missing' && (
-                        <span className="text-[10px] font-semibold text-red-400 flex-shrink-0">NEED</span>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {isWishlisted ? (
+                            <span className="text-[10px] text-amber">wishlisted</span>
+                          ) : (
+                            <button
+                              onClick={() => addToWishlist(paint.name, paint.brand)}
+                              disabled={isLoading}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-amber/10 text-amber border border-amber/30 hover:bg-amber/20 transition-colors disabled:opacity-50"
+                            >
+                              {isLoading ? '...' : '+ wish'}
+                            </button>
+                          )}
+                          <a
+                            href={amazonSearchUrl(paint.name, paint.brand)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/20 text-blue-300 border border-blue-800/30 hover:bg-blue-900/30 transition-colors"
+                          >
+                            buy
+                          </a>
+                        </div>
+                      )}
+                      {/* No inventory — show buy link for all */}
+                      {status === null && (
+                        <a
+                          href={amazonSearchUrl(paint.name, paint.brand)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] px-1.5 py-0.5 rounded text-muted hover:text-blue-300 transition-colors flex-shrink-0"
+                        >
+                          buy
+                        </a>
                       )}
                     </div>
                   )
@@ -129,12 +201,70 @@ export function PlanDisplay({
             </div>
           ))}
         </div>
-        <div className="mt-4 pt-3 border-t border-card-border">
+
+        <div className="mt-4 pt-3 border-t border-card-border flex items-center justify-between">
           <p className="text-[11px] text-muted">
-            Total: {plan.paints?.length} paints across {sortedPaintTypes.length} types
+            {totalPaints} paints across {sortedPaintTypes.length} types
           </p>
+          {!hasInventory && (
+            <a href="/collection" className="text-[11px] text-amber hover:text-amber-hover transition-colors">
+              Add your paints for OWN/NEED status
+            </a>
+          )}
         </div>
       </div>
+
+      {/* ── SHOPPING LIST (missing paints only) ── */}
+      {hasInventory && missingPaints.length > 0 && (
+        <div className="bg-card rounded-lg border border-card-border p-5">
+          <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">
+            Shopping List
+          </h3>
+          <p className="text-xs text-muted mb-3">
+            {missingPaints.length} paints you need for this project
+          </p>
+          <div className="space-y-1.5">
+            {missingPaints.map((paint: any, i: number) => {
+              const isWishlisted = wishlisted.has(paint.name.toLowerCase().trim())
+              const isLoading = wishlistLoading === paint.name
+              return (
+                <div key={i} className="flex items-center gap-3 px-3 py-2 bg-background/50 rounded-md text-sm">
+                  <div
+                    className="w-6 h-6 rounded border border-card-border flex-shrink-0"
+                    style={{ backgroundColor: paint.hex_color || '#555' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-heading font-medium">{paint.name}</span>
+                    <span className="text-muted text-xs ml-1.5">{paint.brand} · {paint.paint_type}</span>
+                  </div>
+                  {isWishlisted ? (
+                    <span className="text-[10px] text-amber flex-shrink-0">wishlisted</span>
+                  ) : (
+                    <button
+                      onClick={() => addToWishlist(paint.name, paint.brand)}
+                      disabled={isLoading}
+                      className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber border border-amber/30 hover:bg-amber/20 transition-colors flex-shrink-0 disabled:opacity-50"
+                    >
+                      {isLoading ? '...' : '+ wishlist'}
+                    </button>
+                  )}
+                  <a
+                    href={amazonSearchUrl(paint.name, paint.brand)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs px-2.5 py-1 rounded-md bg-blue-900/20 text-blue-300 border border-blue-800/30 hover:bg-blue-900/30 transition-colors flex-shrink-0 font-medium"
+                  >
+                    Buy on Amazon
+                  </a>
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-[10px] text-muted mt-3 opacity-60">
+            Links go to Amazon search results. MiniMastery may earn a commission.
+          </p>
+        </div>
+      )}
 
       {/* ── STEP-BY-STEP ── */}
       <div className="bg-card rounded-lg border border-card-border p-5">
@@ -248,7 +378,6 @@ export function PlanDisplay({
 
 /**
  * Group steps into phases based on technique patterns.
- * Tries to detect natural phases like "Prep", "Basecoats", "Details", "Finishing"
  */
 function groupStepsIntoPhases(steps: any[]) {
   if (steps.length <= 4) {
@@ -267,7 +396,6 @@ function groupStepsIntoPhases(steps: any[]) {
     const instr = (step.instruction || '').toLowerCase()
 
     if (currentPhase.steps.length > 0) {
-      // Detect phase transitions
       if (currentPhase.label === 'Preparation' && !prepTechniques.has(tech) && !instr.includes('prime') && !instr.includes('assemble')) {
         phases.push(currentPhase)
         if (tech === 'wash' || tech === 'shade' || instr.includes('wash') || instr.includes('shade')) {
@@ -299,7 +427,6 @@ function groupStepsIntoPhases(steps: any[]) {
     phases.push(currentPhase)
   }
 
-  // If we only got one phase, don't bother labeling
   if (phases.length <= 1) {
     return [{ label: null, steps }]
   }
