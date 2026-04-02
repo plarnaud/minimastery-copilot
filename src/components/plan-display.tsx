@@ -20,17 +20,23 @@ export function PlanDisplay({
   ownedPaintNames?: string[]
 }) {
   const [feedback, setFeedback] = useState<'positive' | 'negative' | null>(null)
-  const [wishlisted, setWishlisted] = useState<Set<string>>(new Set())
-  const [wishlistLoading, setWishlistLoading] = useState<string | null>(null)
+  const [addedPaints, setAddedPaints] = useState<Map<string, 'owned' | 'wishlist'>>(new Map())
+  const [addingPaint, setAddingPaint] = useState<string | null>(null)
   const supabase = createClient()
 
-  // Normalize owned paint names for matching
+  // Merge original owned set with paints added during this session
   const ownedSet = new Set(ownedPaintNames.map(n => n.toLowerCase().trim()))
-  const hasInventory = ownedSet.size > 0
+  for (const [name, status] of addedPaints) {
+    if (status === 'owned') ownedSet.add(name)
+  }
+  const hasInventory = ownedSet.size > 0 || addedPaints.size > 0
 
-  function paintStatus(paintName: string): 'have' | 'missing' | null {
-    if (!hasInventory) return null
-    return ownedSet.has(paintName.toLowerCase().trim()) ? 'have' : 'missing'
+  function paintStatus(paintName: string): 'have' | 'missing' | 'wishlisted' | null {
+    const key = paintName.toLowerCase().trim()
+    if (ownedSet.has(key)) return 'have'
+    if (addedPaints.get(key) === 'wishlist') return 'wishlisted'
+    if (hasInventory) return 'missing'
+    return null
   }
 
   async function submitFeedback(type: 'positive' | 'negative') {
@@ -40,13 +46,12 @@ export function PlanDisplay({
     }
   }
 
-  const addToWishlist = useCallback(async (paintName: string, brand: string) => {
-    setWishlistLoading(paintName)
+  const addPaintToInventory = useCallback(async (paintName: string, status: 'owned' | 'wishlist') => {
+    setAddingPaint(paintName)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Find paint in catalog by name (case-insensitive)
       const { data: matches } = await supabase
         .from('paint_catalog')
         .select('id')
@@ -56,11 +61,11 @@ export function PlanDisplay({
       if (matches && matches.length > 0) {
         await supabase
           .from('user_inventory')
-          .upsert({ user_id: user.id, paint_id: matches[0].id, status: 'wishlist' }, { onConflict: 'user_id,paint_id' })
-        setWishlisted(prev => new Set(prev).add(paintName.toLowerCase().trim()))
+          .upsert({ user_id: user.id, paint_id: matches[0].id, status }, { onConflict: 'user_id,paint_id' })
+        setAddedPaints(prev => new Map(prev).set(paintName.toLowerCase().trim(), status))
       }
     } finally {
-      setWishlistLoading(null)
+      setAddingPaint(null)
     }
   }, [supabase])
 
@@ -80,7 +85,9 @@ export function PlanDisplay({
   const totalPaints = plan.paints?.length || 0
   const ownedCount = hasInventory ? (plan.paints || []).filter((p: any) => paintStatus(p.name) === 'have').length : 0
   const missingCount = totalPaints - ownedCount
-  const missingPaints = hasInventory ? (plan.paints || []).filter((p: any) => paintStatus(p.name) === 'missing') : []
+  const missingPaints = hasInventory
+    ? (plan.paints || []).filter((p: any) => { const s = paintStatus(p.name); return s === 'missing' || s === 'wishlisted' })
+    : []
 
   // Group steps into phases
   const phases = groupStepsIntoPhases(plan.steps || [])
@@ -136,14 +143,15 @@ export function PlanDisplay({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {paintsByType[type].map((paint: any, i: number) => {
                   const status = paintStatus(paint.name)
-                  const isWishlisted = wishlisted.has(paint.name.toLowerCase().trim())
-                  const isLoading = wishlistLoading === paint.name
+                  const isLoading = addingPaint === paint.name
                   return (
                     <div
                       key={i}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-md border transition-colors ${
                         status === 'have'
                           ? 'bg-green-900/10 border-green-800/30'
+                          : status === 'wishlisted'
+                          ? 'bg-amber/5 border-amber/20'
                           : status === 'missing'
                           ? 'bg-red-900/10 border-red-900/30'
                           : 'bg-background/50 border-transparent hover:border-card-border'
@@ -157,43 +165,14 @@ export function PlanDisplay({
                         <p className="text-sm font-medium text-heading truncate">{paint.name}</p>
                         <p className="text-[11px] text-muted truncate">{paint.purpose}</p>
                       </div>
-                      {status === 'have' && (
-                        <span className="text-[10px] font-semibold text-green-400 flex-shrink-0">OWN</span>
-                      )}
-                      {status === 'missing' && (
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {isWishlisted ? (
-                            <span className="text-[10px] text-amber">wishlisted</span>
-                          ) : (
-                            <button
-                              onClick={() => addToWishlist(paint.name, paint.brand)}
-                              disabled={isLoading}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-amber/10 text-amber border border-amber/30 hover:bg-amber/20 transition-colors disabled:opacity-50"
-                            >
-                              {isLoading ? '...' : '+ wish'}
-                            </button>
-                          )}
-                          <a
-                            href={amazonSearchUrl(paint.name, paint.brand)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/20 text-blue-300 border border-blue-800/30 hover:bg-blue-900/30 transition-colors"
-                          >
-                            buy
-                          </a>
-                        </div>
-                      )}
-                      {/* No inventory — show buy link for all */}
-                      {status === null && (
-                        <a
-                          href={amazonSearchUrl(paint.name, paint.brand)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] px-1.5 py-0.5 rounded text-muted hover:text-blue-300 transition-colors flex-shrink-0"
-                        >
-                          buy
-                        </a>
-                      )}
+                      <PaintActions
+                        status={status}
+                        isLoading={isLoading}
+                        paintName={paint.name}
+                        paintBrand={paint.brand}
+                        onOwned={() => addPaintToInventory(paint.name, 'owned')}
+                        onWishlist={() => addPaintToInventory(paint.name, 'wishlist')}
+                      />
                     </div>
                   )
                 })}
@@ -225,8 +204,8 @@ export function PlanDisplay({
           </p>
           <div className="space-y-1.5">
             {missingPaints.map((paint: any, i: number) => {
-              const isWishlisted = wishlisted.has(paint.name.toLowerCase().trim())
-              const isLoading = wishlistLoading === paint.name
+              const status = paintStatus(paint.name)
+              const isLoading = addingPaint === paint.name
               return (
                 <div key={i} className="flex items-center gap-3 px-3 py-2 bg-background/50 rounded-md text-sm">
                   <div
@@ -237,25 +216,15 @@ export function PlanDisplay({
                     <span className="text-heading font-medium">{paint.name}</span>
                     <span className="text-muted text-xs ml-1.5">{paint.brand} · {paint.paint_type}</span>
                   </div>
-                  {isWishlisted ? (
-                    <span className="text-[10px] text-amber flex-shrink-0">wishlisted</span>
-                  ) : (
-                    <button
-                      onClick={() => addToWishlist(paint.name, paint.brand)}
-                      disabled={isLoading}
-                      className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber border border-amber/30 hover:bg-amber/20 transition-colors flex-shrink-0 disabled:opacity-50"
-                    >
-                      {isLoading ? '...' : '+ wishlist'}
-                    </button>
-                  )}
-                  <a
-                    href={amazonSearchUrl(paint.name, paint.brand)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs px-2.5 py-1 rounded-md bg-blue-900/20 text-blue-300 border border-blue-800/30 hover:bg-blue-900/30 transition-colors flex-shrink-0 font-medium"
-                  >
-                    Buy on Amazon
-                  </a>
+                  <PaintActions
+                    status={status}
+                    isLoading={isLoading}
+                    paintName={paint.name}
+                    paintBrand={paint.brand}
+                    onOwned={() => addPaintToInventory(paint.name, 'owned')}
+                    onWishlist={() => addPaintToInventory(paint.name, 'wishlist')}
+                    showBuyLabel
+                  />
                 </div>
               )
             })}
@@ -373,6 +342,84 @@ export function PlanDisplay({
         </div>
       </div>
     </div>
+  )
+}
+
+function PaintActions({
+  status,
+  isLoading,
+  paintName,
+  paintBrand,
+  onOwned,
+  onWishlist,
+  showBuyLabel = false,
+}: {
+  status: 'have' | 'missing' | 'wishlisted' | null
+  isLoading: boolean
+  paintName: string
+  paintBrand: string
+  onOwned: () => void
+  onWishlist: () => void
+  showBuyLabel?: boolean
+}) {
+  if (status === 'have') {
+    return <span className="text-[10px] font-semibold text-green-400 flex-shrink-0">OWN</span>
+  }
+
+  if (status === 'wishlisted') {
+    return (
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <span className="text-[10px] text-amber">wishlisted</span>
+        <button
+          onClick={onOwned}
+          disabled={isLoading}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/20 text-green-400 border border-green-800/30 hover:bg-green-900/30 transition-colors disabled:opacity-50"
+        >
+          {isLoading ? '...' : 'got it'}
+        </button>
+      </div>
+    )
+  }
+
+  if (status === 'missing') {
+    return (
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <button
+          onClick={onOwned}
+          disabled={isLoading}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/20 text-green-400 border border-green-800/30 hover:bg-green-900/30 transition-colors disabled:opacity-50"
+        >
+          {isLoading ? '...' : 'have it'}
+        </button>
+        <button
+          onClick={onWishlist}
+          disabled={isLoading}
+          className="text-[10px] px-1.5 py-0.5 rounded bg-amber/10 text-amber border border-amber/30 hover:bg-amber/20 transition-colors disabled:opacity-50"
+        >
+          {isLoading ? '...' : '+ wish'}
+        </button>
+        <a
+          href={amazonSearchUrl(paintName, paintBrand)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`text-[10px] px-1.5 py-0.5 rounded bg-blue-900/20 text-blue-300 border border-blue-800/30 hover:bg-blue-900/30 transition-colors`}
+        >
+          {showBuyLabel ? 'Buy on Amazon' : 'buy'}
+        </a>
+      </div>
+    )
+  }
+
+  // No inventory
+  return (
+    <a
+      href={amazonSearchUrl(paintName, paintBrand)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-[10px] px-1.5 py-0.5 rounded text-muted hover:text-blue-300 transition-colors flex-shrink-0"
+    >
+      buy
+    </a>
   )
 }
 
