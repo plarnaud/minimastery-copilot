@@ -128,8 +128,13 @@ export default function Home() {
       }
 
       const data = await res.json()
+      if (data.plan_id) {
+        router.push(`/plan/${data.plan_id}`)
+        return
+      }
+      // Fallback: show inline if save failed
       setPlan(data.plan)
-      setPlanId(data.plan_id)
+      setPlanId(null)
       if (data.save_error) setSaveError(data.save_error)
     } catch (err) {
       setError('Network error. Check your connection and try again.')
