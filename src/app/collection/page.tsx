@@ -230,24 +230,31 @@ export default function CollectionPage() {
       {tab === 'plans' && (
         <div className="space-y-3">
           {savedPlans.map((plan) => (
-            <div
+            <a
               key={plan.id}
-              className="bg-card rounded-md border border-card-border p-4 hover:border-amber/30 transition-colors"
+              href={`/plan/${plan.id}`}
+              className="block bg-card rounded-md border border-card-border p-4 hover:border-amber/50 transition-colors group"
             >
-              <h3 className="font-medium text-sm text-heading">
-                {plan.plan_json?.title || plan.input_text}
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-sm text-heading group-hover:text-amber transition-colors">
+                  {plan.plan_json?.title || plan.input_text}
+                </h3>
+                <span className="text-muted text-xs group-hover:text-amber transition-colors">&rarr;</span>
+              </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted">
                 <span className="text-amber">{plan.plan_json?.style}</span>
                 <span>{plan.plan_json?.paints?.length} paints</span>
                 <span>{plan.plan_json?.steps?.length} steps</span>
                 <span>{new Date(plan.created_at).toLocaleDateString()}</span>
               </div>
-            </div>
+            </a>
           ))}
           {savedPlans.length === 0 && (
             <p className="text-sm text-muted text-center py-8">
-              No saved plans yet. Generate your first plan from the home page.
+              No saved plans yet.{' '}
+              <a href="/" className="text-amber hover:text-amber-hover underline underline-offset-2">
+                Generate your first plan
+              </a>
             </p>
           )}
         </div>
