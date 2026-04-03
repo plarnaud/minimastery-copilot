@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { findVideoForPhase, findVideoForStep, youtubeEmbedUrl, youtubeSearchUrl } from '@/lib/technique-videos'
 
 function amazonSearchUrl(paintName: string, brand: string): string {
   const query = encodeURIComponent(`${brand} ${paintName} miniature paint`)
@@ -236,47 +237,66 @@ export function PlanDisplay({
       )}
 
       {/* ── STEP-BY-STEP ── */}
-      <div className="bg-card rounded-lg border border-card-border p-5">
-        <h3 className="text-sm font-semibold text-amber mb-4 uppercase tracking-wider">
-          Step-by-Step Plan
-        </h3>
-        <div className="space-y-6">
-          {phases.map((phase, pi) => (
-            <div key={pi}>
-              {phase.label && (
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="h-px flex-1 bg-card-border" />
-                  <span className="text-[11px] font-medium text-muted uppercase tracking-wide px-1">
-                    {phase.label}
-                  </span>
-                  <div className="h-px flex-1 bg-card-border" />
-                </div>
-              )}
-              <div className="space-y-2.5">
-                {phase.steps.map((step: any) => (
-                  <div key={step.order} className="flex gap-3 group">
-                    <div className="w-7 h-7 bg-amber text-background rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm mt-0.5">
-                      {step.order}
-                    </div>
-                    <div className="flex-1 pb-2.5 border-b border-card-border/50 group-last:border-0">
-                      <p className="text-sm text-foreground leading-relaxed">{step.instruction}</p>
-                      {step.paint_name && (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-xs text-amber">{step.paint_name}</span>
-                          <span className="text-[10px] text-muted">· {step.technique}</span>
-                        </div>
-                      )}
-                      {!step.paint_name && step.technique && (
-                        <span className="text-[10px] text-muted mt-0.5 inline-block">{step.technique}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+      {phases.map((phase, pi) => {
+        const phaseVideo = phase.label ? findVideoForPhase(phase.label) : null
+        return (
+          <div key={pi} className="bg-card rounded-lg border border-card-border p-5">
+            {/* Phase header */}
+            {phase.label ? (
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-sm font-semibold text-amber uppercase tracking-wider">
+                  {phase.label}
+                </h3>
+                <div className="h-px flex-1 bg-card-border" />
+                <span className="text-[10px] text-muted">{phase.steps.length} steps</span>
               </div>
+            ) : (
+              <h3 className="text-sm font-semibold text-amber mb-4 uppercase tracking-wider">
+                Step-by-Step Plan
+              </h3>
+            )}
+
+            {/* Tutorial video for this phase */}
+            {phaseVideo && (
+              <PhaseVideo video={phaseVideo} phaseLabel={phase.label || 'painting'} />
+            )}
+            {!phaseVideo && phase.label && (
+              <a
+                href={youtubeSearchUrl(phase.label)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 mb-4 px-3 py-2 rounded-md bg-red-900/10 border border-red-900/20 text-xs text-red-300 hover:bg-red-900/20 transition-colors"
+              >
+                <span>▶</span>
+                <span>Search tutorials for "{phase.label}" on YouTube</span>
+              </a>
+            )}
+
+            {/* Steps */}
+            <div className="space-y-2.5">
+              {phase.steps.map((step: any) => (
+                <div key={step.order} className="flex gap-3 group">
+                  <div className="w-7 h-7 bg-amber text-background rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-sm mt-0.5">
+                    {step.order}
+                  </div>
+                  <div className="flex-1 pb-2.5 border-b border-card-border/50 group-last:border-0">
+                    <p className="text-sm text-foreground leading-relaxed">{step.instruction}</p>
+                    {step.paint_name && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-xs text-amber">{step.paint_name}</span>
+                        <span className="text-[10px] text-muted">· {step.technique}</span>
+                      </div>
+                    )}
+                    {!step.paint_name && step.technique && (
+                      <span className="text-[10px] text-muted mt-0.5 inline-block">{step.technique}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        )
+      })}
 
       {/* ── BASING ── */}
       {plan.basing?.length > 0 && (
@@ -284,6 +304,7 @@ export function PlanDisplay({
           <h3 className="text-sm font-semibold text-amber mb-4 uppercase tracking-wider">
             Basing Plan
           </h3>
+          <PhaseVideo video={findVideoForPhase('basing')!} phaseLabel="basing" />
           <div className="space-y-3">
             {plan.basing.map((step: any) => (
               <div key={step.order} className="flex gap-3">
@@ -341,6 +362,51 @@ export function PlanDisplay({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PhaseVideo({ video, phaseLabel }: { video: { videoId: string; title: string; channel: string } | null; phaseLabel: string }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (!video) return null
+
+  return (
+    <div className="mb-4">
+      {!expanded ? (
+        <button
+          onClick={() => setExpanded(true)}
+          className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-md bg-red-900/10 border border-red-900/20 hover:bg-red-900/20 transition-colors text-left group"
+        >
+          <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-sm ml-0.5">▶</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-heading group-hover:text-red-300 transition-colors">
+              {video.title}
+            </p>
+            <p className="text-[10px] text-muted">{video.channel} · Watch tutorial</p>
+          </div>
+        </button>
+      ) : (
+        <div className="rounded-md overflow-hidden border border-card-border">
+          <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src={youtubeEmbedUrl(video.videoId)}
+              title={video.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+          <button
+            onClick={() => setExpanded(false)}
+            className="w-full px-3 py-1.5 text-[10px] text-muted hover:text-foreground bg-background transition-colors"
+          >
+            Hide video
+          </button>
+        </div>
+      )}
     </div>
   )
 }
