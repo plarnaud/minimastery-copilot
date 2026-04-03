@@ -5,6 +5,7 @@ export interface SessionPlan {
   paints: PaintItem[]
   steps: PaintStep[]
   basing: BasingStep[]
+  references?: PlanReferences
 }
 
 export interface PaintItem {
@@ -26,4 +27,12 @@ export interface BasingStep {
   order: number
   instruction: string
   materials: string[]
+}
+
+export interface PlanReferences {
+  search_query: string
+  faction?: string
+  unit?: string
+  color_scheme_description: string
+  suggested_sources: string[]
 }

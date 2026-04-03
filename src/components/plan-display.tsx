@@ -114,6 +114,74 @@ export function PlanDisplay({
         </div>
       </div>
 
+      {/* ── REFERENCE IMAGES ── */}
+      {plan.references && (
+        <div className="bg-card rounded-lg border border-card-border p-5">
+          <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">
+            What You're Aiming For
+          </h3>
+          <p className="text-sm text-foreground mb-4 leading-relaxed">
+            {plan.references.color_scheme_description}
+          </p>
+
+          {/* Search links for reference images */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(plan.references.search_query)}&tbm=isch`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-background border border-card-border hover:border-amber/40 transition-colors group"
+            >
+              <span className="text-lg">🖼</span>
+              <div>
+                <p className="text-xs font-medium text-heading group-hover:text-amber transition-colors">Google Images</p>
+                <p className="text-[10px] text-muted">Search painted examples</p>
+              </div>
+            </a>
+            <a
+              href={`https://www.reddit.com/search/?q=${encodeURIComponent(plan.references.search_query)}&type=image`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-background border border-card-border hover:border-amber/40 transition-colors group"
+            >
+              <span className="text-lg">📸</span>
+              <div>
+                <p className="text-xs font-medium text-heading group-hover:text-amber transition-colors">Reddit</p>
+                <p className="text-[10px] text-muted">Community painted examples</p>
+              </div>
+            </a>
+          </div>
+
+          {/* Suggested communities */}
+          {plan.references.suggested_sources?.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <span className="text-[10px] text-muted py-0.5">Browse:</span>
+              {plan.references.suggested_sources.map((source: string, i: number) => {
+                const isReddit = source.startsWith('r/')
+                const url = isReddit
+                  ? `https://www.reddit.com/${source}/`
+                  : `https://www.google.com/search?q=${encodeURIComponent(source)}&tbm=isch`
+                return (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] px-2 py-0.5 rounded bg-amber/10 text-amber hover:bg-amber/20 transition-colors"
+                  >
+                    {source}
+                  </a>
+                )
+              })}
+            </div>
+          )}
+
+          <p className="text-[10px] text-muted mt-3 opacity-60">
+            Images belong to their original creators. Search results may include work by other painters for reference only.
+          </p>
+        </div>
+      )}
+
       {/* ── PAINTS BY TYPE ── */}
       <div className="bg-card rounded-lg border border-card-border p-5">
         <h3 className="text-sm font-semibold text-amber mb-3 uppercase tracking-wider">

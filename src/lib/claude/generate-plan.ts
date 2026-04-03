@@ -62,8 +62,35 @@ const SESSION_PLAN_TOOL: Anthropic.Messages.Tool = {
           required: ['order', 'instruction', 'materials'],
         },
       },
+      references: {
+        type: 'object',
+        properties: {
+          search_query: {
+            type: 'string',
+            description: 'A search query to find reference photos of this exact miniature painted in this style. Be specific: include faction, unit name, and style. e.g. "Blood Angels Intercessor grimdark painted miniature"',
+          },
+          faction: {
+            type: 'string',
+            description: 'The game faction or army, e.g. "Blood Angels", "Stormcast Eternals", "Death Guard"',
+          },
+          unit: {
+            type: 'string',
+            description: 'The specific unit or model name, e.g. "Intercessor", "Sequitor", "Plague Marine"',
+          },
+          color_scheme_description: {
+            type: 'string',
+            description: 'A 1-2 sentence description of the target look: dominant colors, mood, finish quality. This helps the painter visualize the goal.',
+          },
+          suggested_sources: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Suggest 2-3 places to find reference images. Use specific subreddit or site suggestions like "r/BloodAngels", "r/minipainting", "Warhammer Community showcase"',
+          },
+        },
+        required: ['search_query', 'color_scheme_description', 'suggested_sources'],
+      },
     },
-    required: ['title', 'style', 'estimated_time_min', 'paints', 'steps', 'basing'],
+    required: ['title', 'style', 'estimated_time_min', 'paints', 'steps', 'basing', 'references'],
   },
 }
 
@@ -89,7 +116,8 @@ Rules:
   - Speed paint: contrast paints, minimal steps
   - Parade/display: multiple thin layers, wet blending, NMM, max detail
 - Aim for 8-15 steps (more for display, fewer for speed paint)
-- Each paint needs a clear purpose`
+- Each paint needs a clear purpose
+- For references: write a specific Google Images search query that would find photos of this exact miniature painted in this style. Also describe the target look in 1-2 sentences so the painter knows what they're aiming for. Suggest 2-3 specific communities where painted examples can be found (use real subreddit names like r/BloodAngels, r/minipainting, r/Warhammer40k, or sites like Warhammer Community).`
 
 export interface GeneratePlanInput {
   description: string
